@@ -96,7 +96,7 @@ def get_group(point):
 
 
 def debug():
-    print(get_group(tuple(ghost_pos)))
+    #print(get_group(tuple(ghost_pos)))
     return
 
 def do_move(point, turn, ):
