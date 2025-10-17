@@ -136,7 +136,7 @@ def do_move(point, turn,):
                 board[point[0]][point[1]] = -1
                 return turn
         history.append(new_stone_list)
-    # update stone list and board state
+    # move successful; update stone list and board state
     stone_list.clear()
     stone_list.append(new_stone_list[0])
     stone_list.append(new_stone_list[1])
@@ -185,8 +185,10 @@ while running:
     # player has attempted to place a stone, move must be handled
     if clicks[0] and click_release:
         click_release = False
-        turn = do_move(tuple(ghost_pos), turn)
-        pass_count = 0
+        new_turn = do_move(tuple(ghost_pos), turn)
+        if not(turn == new_turn):
+            pass_count = 0
+        turn = new_turn
     if not clicks[0]:
         click_release = True
 
