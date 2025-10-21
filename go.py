@@ -171,6 +171,7 @@ def score_game():
 def display_frame():
     show_board()
     show_ghost(ghost_pos[0], ghost_pos[1])
+    pygame.display.flip()
 # main game loop
 while running:
     for event in pygame.event.get():
@@ -206,7 +207,6 @@ while running:
     if keys[pygame.K_d]:
         debug()
 
-    pygame.display.flip()
     clock.tick(fpsLimit)
     
 pygame.quit()
