@@ -3,7 +3,7 @@ PocketGo is an implementation of the classic strategy game Go. It features custo
 # Installation
 PocketGo requires python, which can be downloaded [here](https://www.python.org/downloads/) at the offical python website. It also requires the pygame library, which is available [here](https://www.pygame.org/wiki/GettingStarted).
 # Features
-To run the game on a standard 19x19 board with no bonus points, simply open the command prompt/terminal and enter
+To run the game on a standard 19x19 board with no bonus points, open the command prompt/terminal and enter
 ```
 python go.py
 ```
