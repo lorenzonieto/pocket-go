@@ -4,6 +4,8 @@ import argparse
 parser = argparse.ArgumentParser(description="Classic strategy game Go implemented in python. Left-click to place stones. Spacebar to pass a turn. Score will be printed after two consecutive passes.")
 parser.add_argument("-s", "--size", type=int, default=19, help="length/width of the board (default is 19x19)")
 parser.add_argument("-b", "--bonus", type=float, default=0, help="the amount of bonus points added to white's score (default is 0)")
+parser.add_argument("--host", action="store_true", help="use this flag to host a game over LAN")
+parser.add_argument("--join", type=str, help="join a game at the inputted IP address")
 args = parser.parse_args()
 # initialize pygame
 pygame.init()
