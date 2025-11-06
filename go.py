@@ -5,8 +5,10 @@ parser = argparse.ArgumentParser(description="Classic strategy game Go implement
 parser.add_argument("-s", "--size", type=int, default=19, help="length/width of the board (default is 19x19)")
 parser.add_argument("-b", "--bonus", type=float, default=0, help="the amount of bonus points added to white's score (default is 0)")
 parser.add_argument("--host", action="store_true", help="use this flag to host a game over LAN")
-parser.add_argument("--join", type=str, help="join a game at the inputted IP address")
+parser.add_argument("--join", type=str, default="", help="join a game at the inputted IP address")
 args = parser.parse_args()
+if args.host and args.join:
+    raise Exception("cannot simultaneously host and join a game")
 # initialize pygame
 pygame.init()
 clock = pygame.time.Clock()
@@ -24,6 +26,10 @@ ghost_thickness = max(int(tile_size / 15), 2)
 board_pos = [tile_size * i for i in range(1, board_size + 1)]
 center_coord = board_pos[board_size // 2]
 # initialize game state
+if args.host or args.join:
+    online = True
+else:
+    online = False
 board = [[-1 for i in range(board_size)] for j in range(board_size)]
 colors = ("black", "white")
 turn = False
@@ -33,6 +39,7 @@ stone_list = [set(), set()]
 board_history = {}
 pass_count = 0
 ghost_pos = [0, 0]
+my_turn = True
 # draws the game board and pieces
 def show_board():
     screen.fill((240, 170, 100))
@@ -186,7 +193,7 @@ while running:
 
     clicks = pygame.mouse.get_pressed()
     # player has attempted to place a stone, move must be handled
-    if clicks[0] and click_release:
+    if clicks[0] and click_release and my_turn:
         click_release = False
         new_turn = do_move(tuple(ghost_pos), turn)
         if not(turn == new_turn):
@@ -197,7 +204,7 @@ while running:
 
     keys = pygame.key.get_pressed()
     # player has passed their turn
-    if keys[pygame.K_SPACE] and pass_release:
+    if keys[pygame.K_SPACE] and pass_release and my_turn:
         pass_release = False
         pass_count += 1
         if pass_count == 2:
