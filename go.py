@@ -110,10 +110,6 @@ def get_group(point):
 
 def debug():
     #print(get_group(tuple(ghost_pos)))
-    move = (4, 4)
-    movec = tuple_to_data(move)
-    print(movec)
-    print(data_to_tuple(movec))
     return
 # update the board's state based on the given turn and move point, and return the next turn
 def do_move(point, turn,):
@@ -195,45 +191,88 @@ def tuple_to_data(move):
 def data_to_tuple(data):
     nums = data.decode().split()
     return (int(nums[0]), int(nums[1]))
-# return connection to opponent if hosting
+# get move tuple that opponent has sent
+def receive_move(sock):
+    msg_len_raw = sock.recv(1)
+    if not msg_len_raw:
+        return False
+    msg_len = int(msg_len_raw.decode())
+    data = b""
+    data_len = 0
+    while data_len < msg_len:
+        tmp = sock.recv(msg_len - data_len)
+        if not tmp:
+            return False
+        data += tmp
+        data_len = len(data)
+    return data_to_tuple(data)
+# send move tuple to opponent
+def send_move(sock, move):
+    data_raw = tuple_to_data(move)
+    data_len = len(data_raw)
+    sock.sendall(str(data_len).encode() + data_raw)
+# get game initialization variables
+def get_init(sock, size, bonus, turn):
+    if sock:
+        return
+# check whether the given socket is ready for reading
+# the given selector must have the socket registered for read events
+def ready_for_read(sock, sel):
+    ready = False
+    events = sel.select(0)
+    for key, mask in events:
+        if key.fd == sock.fileno() and mask & selectors.EVENT_READ:
+            ready = True
+    return ready
+# return connection to opponent and socket selector if hosting
 def get_connection():
     # create listening socket
     lsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     lsock.bind(("127.0.0.1", 33322))
     lsock.listen(1)
     # create selector to poll for events
-    selector = selectors.DefaultSelector()
-    selector.register(lsock, selectors.EVENT_READ, data=None)
+    sel = selectors.DefaultSelector()
+    sel.register(lsock, selectors.EVENT_READ, data=None)
     # listen for connection attempts, or quit
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 # user has closed pygame window
+                sel.unregister(lsock)
                 lsock.close()
-                return False
-        events = selector.select(0)
-        for key, mask in events:
-            if key.fd == lsock.fileno() and mask & selectors.EVENT_READ:
-                # opponent found, return a connection
-                connection, address = lsock.accept()
-                lsock.close()
-                return connection
-# return connection to host if joining
+                return (False, False)
+        if ready_for_read(lsock, sel):
+            connection, address = lsock.accept()
+            sel.unregister(lsock)
+            sel.register(connection, selectors.EVENT_READ, data=None)
+            lsock.close()
+            return (connection, sel)
+# return connection to host and socket selector if joining
 def connect():
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect(("127.0.0.1", 33322))
-    return sock
+
+    sel = selectors.DefaultSelector()
+    sel.register(sock, selectors.EVENT_READ, data=None)
+    return (sock, sel)
 
 if args.host:
-    connection = get_connection()
+    connection, selector = get_connection()
     if not connection:
         running = False
 if args.join:
-    connection = connect()
+    connection, selector = connect()
 if online:
     if connection:
-        connection.close()
+        if args.host:
+            while True:
+                if ready_for_read(connection, selector):
+                    print(receive_move(connection))
+                    break
+        if args.join:
+            send_move(connection, (3, 3))
         print("successful connection")
+        connection.close()
         running = False
 # main game loop
 while running:
