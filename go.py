@@ -1,5 +1,7 @@
 import pygame
 import argparse
+import socket
+import selectors
 
 parser = argparse.ArgumentParser(description="Classic strategy game Go implemented in python. Left-click to place stones. Spacebar to pass a turn. Score will be printed after two consecutive passes.")
 parser.add_argument("-s", "--size", type=int, default=19, help="length/width of the board (default is 19x19)")
@@ -39,7 +41,7 @@ stone_list = [set(), set()]
 board_history = {}
 pass_count = 0
 ghost_pos = [0, 0]
-my_turn = True
+opponent_turn = True
 # draws the game board and pieces
 def show_board():
     screen.fill((240, 170, 100))
@@ -108,6 +110,10 @@ def get_group(point):
 
 def debug():
     #print(get_group(tuple(ghost_pos)))
+    move = (4, 4)
+    movec = tuple_to_data(move)
+    print(movec)
+    print(data_to_tuple(movec))
     return
 # update the board's state based on the given turn and move point, and return the next turn
 def do_move(point, turn,):
@@ -181,6 +187,54 @@ def display_frame():
     show_board()
     show_ghost(ghost_pos[0], ghost_pos[1])
     pygame.display.flip()
+# convert move tuple to encoded string
+def tuple_to_data(move):
+    string = str(move[0]) + " " + str(move[1])
+    return string.encode()
+# convert encoded string to move tuple
+def data_to_tuple(data):
+    nums = data.decode().split()
+    return (int(nums[0]), int(nums[1]))
+# return connection to opponent if hosting
+def get_connection():
+    # create listening socket
+    lsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    lsock.bind(("127.0.0.1", 33322))
+    lsock.listen(1)
+    # create selector to poll for events
+    selector = selectors.DefaultSelector()
+    selector.register(lsock, selectors.EVENT_READ, data=None)
+    # listen for connection attempts, or quit
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                # user has closed pygame window
+                lsock.close()
+                return False
+        events = selector.select(0)
+        for key, mask in events:
+            if key.fd == lsock.fileno() and mask & selectors.EVENT_READ:
+                # opponent found, return a connection
+                connection, address = lsock.accept()
+                lsock.close()
+                return connection
+# return connection to host if joining
+def connect():
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.connect(("127.0.0.1", 33322))
+    return sock
+
+if args.host:
+    connection = get_connection()
+    if not connection:
+        running = False
+if args.join:
+    connection = connect()
+if online:
+    if connection:
+        connection.close()
+        print("successful connection")
+        running = False
 # main game loop
 while running:
     for event in pygame.event.get():
@@ -193,7 +247,7 @@ while running:
 
     clicks = pygame.mouse.get_pressed()
     # player has attempted to place a stone, move must be handled
-    if clicks[0] and click_release and my_turn:
+    if clicks[0] and click_release:
         click_release = False
         new_turn = do_move(tuple(ghost_pos), turn)
         if not(turn == new_turn):
@@ -204,7 +258,7 @@ while running:
 
     keys = pygame.key.get_pressed()
     # player has passed their turn
-    if keys[pygame.K_SPACE] and pass_release and my_turn:
+    if keys[pygame.K_SPACE] and pass_release:
         pass_release = False
         pass_count += 1
         if pass_count == 2:
