@@ -183,38 +183,64 @@ def display_frame():
     show_board()
     show_ghost(ghost_pos[0], ghost_pos[1])
     pygame.display.flip()
-# convert move tuple to encoded string
-def tuple_to_data(move):
-    string = str(move[0]) + " " + str(move[1])
-    return string.encode()
-# convert encoded string to move tuple
-def data_to_tuple(data):
-    nums = data.decode().split()
-    return (int(nums[0]), int(nums[1]))
-# get move tuple that opponent has sent
-def receive_move(sock):
-    msg_len_raw = sock.recv(1)
-    if not msg_len_raw:
-        return False
-    msg_len = int(msg_len_raw.decode())
+# send game initialization variables to opponent if hosting
+def send_init_list(sock, size, bonus, turn):
+    size_str = str(size)
+    size_len = str(len(size_str))
+    bonus_str = str(bonus)
+    bonus_len = str(len(bonus_str))
+    if turn:
+        color = "1"
+    else:
+        color = "0"
+    string = size_len + size_str + bonus_len + bonus_str + color 
+    sock.sendall(string.encode())
+# get game initialization variables
+def get_init(sock, sel, size, bonus, turn):
+    if args.join:
+        while True:
+            if ready_for_read(sock, sel):
+                size = int(get_prepend_bytes(sock).decode())
+                bonus = float(get_prepend_bytes(sock).decode())
+                turn = int(get_bytes(sock, 1).decode())
+                if turn == 0:
+                    turn = True
+                else:
+                    turn = False
+                return (size, bonus, turn)
+# get the specified amount of bytes from the connection
+def get_bytes(sock, n):
     data = b""
     data_len = 0
-    while data_len < msg_len:
-        tmp = sock.recv(msg_len - data_len)
+    while data_len < n:
+        tmp = sock.recv(n - data_len)
         if not tmp:
             return False
         data += tmp
         data_len = len(data)
-    return data_to_tuple(data)
+    return data
+# get the full message from the connection when prepended with length
+def get_prepend_bytes(sock):
+    msg_len_raw = get_bytes(sock, 1)
+    if not msg_len_raw:
+        return False
+    msg_len = int(msg_len_raw.decode())
+    msg = get_bytes(sock, msg_len)
+    if not msg:
+        return False
+    return msg
+# get move tuple that opponent has sent
+def receive_move(sock):
+    data = get_prepend_bytes(sock)
+    if not data:
+        return False
+    nums = data.decode().split()
+    return (int(nums[0]), int(nums[1]))
 # send move tuple to opponent
 def send_move(sock, move):
-    data_raw = tuple_to_data(move)
-    data_len = len(data_raw)
-    sock.sendall(str(data_len).encode() + data_raw)
-# get game initialization variables
-def get_init(sock, size, bonus, turn):
-    if sock:
-        return
+    move_data = (str(move[0]) + " " + str(move[1])).encode()
+    move_prepend = len(move_data)
+    sock.sendall(str(move_prepend).encode() + move_data)
 # check whether the given socket is ready for reading
 # the given selector must have the socket registered for read events
 def ready_for_read(sock, sel):
@@ -265,12 +291,11 @@ if args.join:
 if online:
     if connection:
         if args.host:
-            while True:
-                if ready_for_read(connection, selector):
-                    print(receive_move(connection))
-                    break
+            send_init_list(connection, 67, 2.33, True)
+            print(receive_move(connection))
         if args.join:
-            send_move(connection, (3, 3))
+            send_move(connection, (3,99))
+            print(get_init(connection, selector, 3, 3, 3))
         print("successful connection")
         connection.close()
         running = False
