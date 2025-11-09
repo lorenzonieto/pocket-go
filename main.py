@@ -3,6 +3,7 @@ import argparse
 import socket
 import selectors
 import game
+import multi
 
 parser = argparse.ArgumentParser(description="Classic strategy game Go implemented in python. Left-click to place stones. Spacebar to pass a turn. Score will be printed after two consecutive passes.")
 parser.add_argument("-s", "--size", type=int, default=19, help="length/width of the board (default is 19x19)")
@@ -17,28 +18,73 @@ online = args.host or args.join
 pygame.init()
 clock = pygame.time.Clock()
 pygame.display.set_caption("Go")
+screen_size = pygame.display.get_desktop_sizes()[0][1] * 3 / 4
+screen = pygame.display.set_mode((screen_size, screen_size))
 fpsLimit = 60
+click_release = False
+pass_release = False
+pass_count = 0
 running = True
 
-game = game.Board(args.size, args.bonus, online, False)
+size = args.size
+bonus = args.bonus
+my_turn = True
 
+if online:
+    sock, sel = multi.get_connection(args.host, args.join)
+    connection = multi.Multiplayer(sock, sel)
+    if connection.socket:
+        if args.host:
+            connection.send_init_list(size, bonus, 1)
+            print("connection successful")
+            #running = False
+        else:
+            size, bonus, my_turn = connection.get_init()
+            print((size, bonus, my_turn))
+            print("connection susccessful")
+            #running = False
+    else:
+        print ("connection failure")
+        running = False
+
+board = game.Board(size, screen_size, bonus, False)
+
+# main game loop
 while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
+            if online:
+                connection.end()
             running = False
+    if not running:
+        break
+    if online:
+        if multi.ready_for_read(connection.socket, connection.selector):
+            move = connection.receive_move()
+            if move:
+                board.do_move(move)
+                my_turn = True
+            elif not move:
+                connection.end()
+                print("connection failure")
+                break
+    if not my_turn:
+        continue
     # poll for mouse input and set ghost position
-    game.set_ghost(pygame.mouse.get_pos()[0], pygame.mouse.get_pos()[1])
+    board.set_ghost(pygame.mouse.get_pos()[0], pygame.mouse.get_pos()[1])
 
-    game.display_frame()
+    game.display_frame(screen, board)
 
     clicks = pygame.mouse.get_pressed()
     # player has attempted to place a stone, move must be handled
     if clicks[0] and click_release:
         click_release = False
-        old_turn = game.turn
-        game.do_move()
-        new_turn = game.turn
+        old_turn = board.turn
+        move = tuple(board.ghost_pos)
+        board.do_move(move)
+        new_turn = board.turn
         if not(old_turn == new_turn):
+            connection.send_move(move)
             pass_count = 0
     if not clicks[0]:
         click_release = True
@@ -50,8 +96,8 @@ while running:
         pass_count += 1
         if pass_count == 2:
             running = False
-            game.score_game()
-        game.turn = not game.turn
+            board.score_game()
+        board.turn = not board.turn
     if not keys[pygame.K_SPACE]:
         pass_release = True
     # player has pressed debug button
