@@ -1,6 +1,6 @@
 import pygame
 class Board:
-    def __init__(self, board_size, screen_size, bonus, turn):
+    def __init__(self, board_size, screen_size, bonus):
         self.screen_size = screen_size
         self.board_size = board_size
         self.tile_size = screen_size / (self.board_size + 1)
@@ -12,7 +12,8 @@ class Board:
         self.center_coord = self.board_pos[self.board_size // 2]
         self.board = [[-1 for i in range(self.board_size)] for j in range(self.board_size)]
         self.colors = ("black", "white")
-        self.turn = turn
+        self.turn = False
+        self.pass_count = 0
         self.stone_list = [set(), set()]
         self.board_history = {}
         self.pass_count = 0
@@ -57,6 +58,10 @@ class Board:
         return
     # update the board's state based on the given turn and move point, and return the next turn
     def do_move(self, move):
+        if move == (-1, -1):
+            self.turn = not self.turn
+            self.pass_count += 1
+            return
         point = tuple(self.ghost_pos)
         opponent = not self.turn
         if not(self.board[move[0]][move[1]] == -1):
@@ -99,6 +104,7 @@ class Board:
         for death in killed_by_move:
             self.board[death[0]][death[1]] = -1
         self.turn = not self.turn
+        self.pass_count = 0
     # determine the score of the game and print result
     def score_game(self):
         if self.bonus.is_integer():
@@ -156,7 +162,8 @@ def show_ghost(screen, board, x, y):
     pygame.draw.circle(screen, board.colors[board.turn], (board.board_pos[x], board.board_pos[y]),
                        board.stone_radius, board.ghost_thickness)
 # call drawing functions
-def display_frame(screen, board):
+def display_frame(screen, board, ghost):
     show_board(screen, board)
-    show_ghost(screen, board, board.ghost_pos[0], board.ghost_pos[1])
+    if ghost:
+        show_ghost(screen, board, board.ghost_pos[0], board.ghost_pos[1])
     pygame.display.flip()

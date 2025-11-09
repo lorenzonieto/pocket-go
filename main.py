@@ -23,7 +23,6 @@ screen = pygame.display.set_mode((screen_size, screen_size))
 fpsLimit = 60
 click_release = False
 pass_release = False
-pass_count = 0
 running = True
 
 size = args.size
@@ -47,62 +46,66 @@ if online:
         print ("connection failure")
         running = False
 
-board = game.Board(size, screen_size, bonus, False)
+board = game.Board(size, screen_size, bonus)
 
 # main game loop
 while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
-            if online:
-                connection.end()
             running = False
     if not running:
         break
     if online:
         if multi.ready_for_read(connection.socket, connection.selector):
             move = connection.receive_move()
-            if move:
+            if move and not my_turn:
                 board.do_move(move)
                 my_turn = True
+                if board.pass_count > 1:
+                    board.score_game()
+                    break
             elif not move:
-                connection.end()
                 print("connection failure")
                 break
-    if not my_turn:
-        continue
-    # poll for mouse input and set ghost position
-    board.set_ghost(pygame.mouse.get_pos()[0], pygame.mouse.get_pos()[1])
+        # poll for mouse input and set ghost position
+        board.set_ghost(pygame.mouse.get_pos()[0], pygame.mouse.get_pos()[1])
 
-    game.display_frame(screen, board)
+        game.display_frame(screen, board, my_turn)
 
-    clicks = pygame.mouse.get_pressed()
-    # player has attempted to place a stone, move must be handled
-    if clicks[0] and click_release:
-        click_release = False
-        old_turn = board.turn
-        move = tuple(board.ghost_pos)
-        board.do_move(move)
-        new_turn = board.turn
-        if not(old_turn == new_turn):
-            connection.send_move(move)
-            pass_count = 0
-    if not clicks[0]:
-        click_release = True
+    if my_turn:
+        clicks = pygame.mouse.get_pressed()
+        # player has attempted to place a stone, move must be handled
+        if clicks[0] and click_release:
+            click_release = False
+            old_turn = board.turn
+            move = tuple(board.ghost_pos)
+            board.do_move(move)
+            new_turn = board.turn
+            if not(old_turn == new_turn) and online:
+                connection.send_move(move)
+                my_turn = False
+        if not clicks[0]:
+            click_release = True
 
-    keys = pygame.key.get_pressed()
-    # player has passed their turn
-    if keys[pygame.K_SPACE] and pass_release:
-        pass_release = False
-        pass_count += 1
-        if pass_count == 2:
-            running = False
-            board.score_game()
-        board.turn = not board.turn
-    if not keys[pygame.K_SPACE]:
-        pass_release = True
-    # player has pressed debug button
-    if keys[pygame.K_d]:
-        debug()
+        keys = pygame.key.get_pressed()
+        # player has passed their turn
+        if keys[pygame.K_SPACE] and pass_release:
+            pass_release = False
+            move = (-1, -1)
+            board.do_move(move)
+            if online:
+                connection.send_move(move)
+                my_turn = False
+            if board.pass_count > 1:
+                board.score_game()
+                break
+        if not keys[pygame.K_SPACE]:
+            pass_release = True
+        # player has pressed debug button
+        if keys[pygame.K_d]:
+            game.debug()
 
     clock.tick(fpsLimit)
+if online and connection.socket:
+    connection.end()
 pygame.quit()
