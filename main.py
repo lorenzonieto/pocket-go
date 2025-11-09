@@ -67,10 +67,10 @@ while running:
             elif not move:
                 print("connection failure")
                 break
-        # poll for mouse input and set ghost position
-        board.set_ghost(pygame.mouse.get_pos()[0], pygame.mouse.get_pos()[1])
+    # poll for mouse input and set ghost position
+    board.set_ghost(pygame.mouse.get_pos()[0], pygame.mouse.get_pos()[1])
 
-        game.display_frame(screen, board, my_turn)
+    game.display_frame(screen, board, my_turn)
 
     if my_turn:
         clicks = pygame.mouse.get_pressed()
