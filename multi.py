@@ -64,6 +64,8 @@ class Multiplayer:
                     turn = False
                 return (size, bonus, turn)
     def end(self):
+        if not self.socket:
+            return
         self.selector.unregister(self.socket)
         self.socket.close()
 # check whether the given socket is ready for reading
@@ -82,7 +84,7 @@ def get_connection(host, join):
     if host:
         # create listening socket
         lsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        lsock.bind(("127.0.0.1", 33322))
+        lsock.bind(("0.0.0.0", 32131))
         lsock.listen(1)
         # create selector to poll for events
         sel = selectors.DefaultSelector()

@@ -43,7 +43,6 @@ if online:
             print("connection susccessful")
             #running = False
     else:
-        print ("connection failure")
         running = False
 
 board = game.Board(size, screen_size, bonus)
@@ -65,7 +64,7 @@ while running:
                     board.score_game()
                     break
             elif not move:
-                print("connection failure")
+                print("opponent disconnected")
                 break
     # poll for mouse input and set ghost position
     board.set_ghost(pygame.mouse.get_pos()[0], pygame.mouse.get_pos()[1])
@@ -106,6 +105,6 @@ while running:
             game.debug()
 
     clock.tick(fpsLimit)
-if online and connection.socket:
+if online:
     connection.end()
 pygame.quit()
