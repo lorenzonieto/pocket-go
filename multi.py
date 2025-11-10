@@ -106,7 +106,7 @@ def get_connection(host, join):
     # return connection to host and socket selector if joining
     else:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.connect((join, 33322))
+        sock.connect((join, 32131))
 
         sel = selectors.DefaultSelector()
         sel.register(sock, selectors.EVENT_READ, data=None)
