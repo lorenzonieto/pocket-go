@@ -36,12 +36,9 @@ if online:
         if args.host:
             connection.send_init_list(size, bonus, 1)
             print("connection successful")
-            #running = False
         else:
             size, bonus, my_turn = connection.get_init()
-            print((size, bonus, my_turn))
             print("connection susccessful")
-            #running = False
     else:
         running = False
 
