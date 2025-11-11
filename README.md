@@ -5,11 +5,11 @@ PocketGo requires python, which can be downloaded [here](https://www.python.org/
 # Features
 To run the game on a standard 19x19 board with no bonus points, open the command prompt/terminal and enter
 ```
-python go.py
+python main.py
 ```
 Use the `--size` option to change the size of the board and the `--bonus` option to change the amount of bonus points for white. For example,
 ```
-python go.py --size 9 --bonus 8
+python main.py --size 9 --bonus 8
 ```
 will run the game on a 9x9 board with 8 points added to white's score.
 # Controls
